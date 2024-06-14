@@ -62,11 +62,20 @@ void measureTime(Generator generator, int n, const std::string &funcName, std::o
     std::cout << funcName << " with n = " << n << " took " << duration.count() << " seconds.\n";
 }
 
+template <typename Generator>
+void writeSample(Generator generator, int n, const std::string &fileName) {
+    std::ofstream sampleFile(fileName);
+    for (int i = 0; i < n; i++) {
+        sampleFile << generator.next() << std::endl;
+    }
+    sampleFile.close();
+}
+
 
 int main() {
     std::ofstream csvFile("timing_results.csv");
     if (!csvFile.is_open()) {
-        std::cerr << "Failed to open file for writing." << std::endl;
+        std::cerr << "Failed to open files for writing." << std::endl;
         return 1;
     }
     csvFile << "n,Function,Time\n";
@@ -78,6 +87,12 @@ int main() {
     Xorshift xorshift(12345);
 
     for (int n : N) {
+        if (n == static_cast<int>(1e5)) {
+            writeSample(lcg, n, "lcg_sample.txt");
+            writeSample(mt, n, "mt_sample.txt");
+            writeSample(xorshift, n, "xorshift_sample.txt");
+        }
+
         measureTime(lcg, n, "LCG", csvFile);
         measureTime(mt, n, "MersenneTwister", csvFile);
         measureTime(xorshift, n, "Xorshift", csvFile);

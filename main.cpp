@@ -4,6 +4,7 @@
 #include <chrono>
 #include <vector>
 #include <fstream>
+#include <immintrin.h>
 
 
 class LCG {
@@ -14,7 +15,7 @@ class LCG {
         static const uint64_t m = 1ULL << 32;
 
     public:
-        LCG(uint64_t seed) : seed(seed) {}
+        explicit LCG(uint64_t seed) : seed(seed) {}
 
         uint32_t next() {
             seed = (a * seed + c) % m;
@@ -27,7 +28,7 @@ class MersenneTwister {
         std::mt19937 mt;
 
     public:
-        MersenneTwister(uint32_t seed) : mt(seed) {}
+        explicit MersenneTwister(uint32_t seed) : mt(seed) {}
 
         uint32_t next() {
             return mt();
@@ -39,13 +40,20 @@ class Xorshift {
         uint32_t state;
 
     public:
-        Xorshift(uint32_t seed) : state(seed) {}
+        explicit Xorshift(uint32_t seed) : state(seed) {}
 
         uint32_t next() {
             state ^= state << 13;
             state ^= state >> 17;
             state ^= state << 5;
             return state;
+        }
+};
+
+class RDRand {
+    public:
+        static bool getRandom64(uint64_t &random) {
+            return _rdrand64_step(&random);
         }
 };
 
@@ -71,6 +79,28 @@ void writeSample(Generator generator, int n, const std::string &fileName) {
     sampleFile.close();
 }
 
+void measureTimeRDRand(int n, std::ofstream &csvFile) {
+    auto start = std::chrono::high_resolution_clock::now();
+    uint64_t rand64;
+    for (int i = 0; i < n; i++) {
+        RDRand::getRandom64(rand64);
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    csvFile << n << "," << "RDRand" << "," << duration.count() << "\n";
+    std::cout << "RDRand" << " with n = " << n << " took " << duration.count() << " seconds.\n";
+}
+
+void writeSampleRDRand(int n, const std::string &fileName) {
+    std::ofstream sampleFile(fileName);
+    uint64_t rand64;
+    for (int i = 0; i < n; i++) {
+        RDRand::getRandom64(rand64);
+        sampleFile << rand64 << std::endl;
+    }
+    sampleFile.close();
+}
+
 
 int main() {
     std::ofstream csvFile("timing_results.csv");
@@ -91,11 +121,13 @@ int main() {
             writeSample(lcg, n, "lcg_sample.txt");
             writeSample(mt, n, "mt_sample.txt");
             writeSample(xorshift, n, "xorshift_sample.txt");
+            writeSampleRDRand(n, "rdrand_sample.txt");
         }
 
         measureTime(lcg, n, "LCG", csvFile);
         measureTime(mt, n, "MersenneTwister", csvFile);
         measureTime(xorshift, n, "Xorshift", csvFile);
+        measureTimeRDRand(n, csvFile);
         std::cout << "-----------" << std::endl;
     }
 

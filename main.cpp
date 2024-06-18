@@ -52,8 +52,8 @@ class Xorshift {
 
 class RDRand {
     public:
-        static bool getRandom64(uint64_t &random) {
-            return _rdrand64_step(&random);
+        static bool getRandom64(uint32_t &random) {
+            return _rdrand32_step(&random);
         }
 };
 
@@ -65,9 +65,9 @@ void measureTime(Generator generator, int n, const std::string &funcName, std::o
         generator.next();
     }
     auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start;
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
     csvFile << n << "," << funcName << "," << duration.count() << "\n";
-    std::cout << funcName << " with n = " << n << " took " << duration.count() << " seconds.\n";
+    std::cout << funcName << " with n = " << n << " took " << duration.count() << " nanoseconds.\n";
 }
 
 template <typename Generator>
@@ -81,22 +81,22 @@ void writeSample(Generator generator, int n, const std::string &fileName) {
 
 void measureTimeRDRand(int n, std::ofstream &csvFile) {
     auto start = std::chrono::high_resolution_clock::now();
-    uint64_t rand64;
+    uint32_t rand32;
     for (int i = 0; i < n; i++) {
-        RDRand::getRandom64(rand64);
+        RDRand::getRandom64(rand32);
     }
     auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start;
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
     csvFile << n << "," << "RDRand" << "," << duration.count() << "\n";
-    std::cout << "RDRand" << " with n = " << n << " took " << duration.count() << " seconds.\n";
+    std::cout << "RDRand" << " with n = " << n << " took " << " nanoseconds.\n";
 }
 
 void writeSampleRDRand(int n, const std::string &fileName) {
     std::ofstream sampleFile(fileName);
-    uint64_t rand64;
+    uint32_t rand32;
     for (int i = 0; i < n; i++) {
-        RDRand::getRandom64(rand64);
-        sampleFile << rand64 << std::endl;
+        RDRand::getRandom64(rand32);
+        sampleFile << rand32 << std::endl;
     }
     sampleFile.close();
 }
@@ -110,19 +110,16 @@ int main() {
     }
     csvFile << "n,Function,Time\n";
 
-    std::vector<int> N = {static_cast<int>(1e4), static_cast<int>(1e5), static_cast<int>(1e6),
-                          static_cast<int>(1e7), static_cast<int>(1e8), static_cast<int>(1e9)};
+    std::vector<int> N = {static_cast<int>(1e2), static_cast<int>(1e3), static_cast<int>(1e4)};
     LCG lcg(12345);
     MersenneTwister mt(12345);
     Xorshift xorshift(12345);
 
     for (int n : N) {
-        if (n == static_cast<int>(1e5)) {
-            writeSample(lcg, n, "lcg_sample.txt");
-            writeSample(mt, n, "mt_sample.txt");
-            writeSample(xorshift, n, "xorshift_sample.txt");
-            writeSampleRDRand(n, "rdrand_sample.txt");
-        }
+        writeSample(lcg, static_cast<int>(1e5), "lcg_sample.txt");
+        writeSample(mt, static_cast<int>(1e5), "mt_sample.txt");
+        writeSample(xorshift, static_cast<int>(1e5), "xorshift_sample.txt");
+        writeSampleRDRand(static_cast<int>(1e5), "rdrand_sample.txt");
 
         measureTime(lcg, n, "LCG", csvFile);
         measureTime(mt, n, "MersenneTwister", csvFile);
